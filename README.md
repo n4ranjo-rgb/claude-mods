@@ -8,7 +8,15 @@ Mi catálogo personal de mods y plugins para **Claude Code**. Este repositorio s
 | --- | --- |
 | [`token-coach`](plugins/token-coach) | Recomienda modelo y esfuerzo en cada prompt y cuida tus tokens (análisis local, no gasta tokens). Panel lateral con el logo de Claude animado. |
 
-## Instalar
+## Skills
+
+| Skill | Qué hace |
+| --- | --- |
+| [`token-coach`](skills/token-coach) | Te dice en una tarjeta qué modelo y esfuerzo usar para cada tarea y cómo aplicarlo. Funciona en la app de Claude, en claude.ai/code y en Claude Code. |
+
+**Instalar la skill:** descarga [`skills/token-coach.zip`](skills/token-coach.zip) → en claude.ai ve a **Configuración → Capacidades → Skills** → **Subir skill** → elige el zip.
+
+## Instalar el plugin
 
 En el prompt de Claude Code, en tu terminal:
 
