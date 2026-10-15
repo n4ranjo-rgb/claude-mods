@@ -1,0 +1,12 @@
+{
+  "name": "n4ranjo-mods",
+  "owner": { "name": "n4ranjo-rgb" },
+  "metadata": { "description": "Mods y plugins de Claude Code de n4ranjo-rgb" },
+  "plugins": [
+    {
+      "name": "token-coach",
+      "source": "./plugins/token-coach",
+      "description": "Recomienda modelo y esfuerzo por prompt y cuida tus tokens, con panel lateral y logo de Claude animado."
+    }
+  ]
+}
