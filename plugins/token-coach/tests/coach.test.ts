@@ -92,3 +92,16 @@ test('el panel se dibuja en terminal y desktop, y el modo cambia', async ($, on)
     await ui.unmount()
   }
 })
+
+test('sin pantalla (Claude Code en la web), /coach responde en texto', async ($, on) => {
+  mock.store(on)
+  on('session.surfaces', () => ({ value: [] }))
+  const tarea = await $.command.run({ command: 'coach', args: 'renombra la variable x a total' })
+  expect(tarea.text).toContain('Haiku 5.5')
+  expect(tarea.text).toContain('/model claude-haiku-5-5')
+  const informe = await $.command.run({ command: 'coach', args: '' })
+  expect(informe.text).toContain('Token Coach')
+  expect(informe.text).toContain('Modo:')
+  const auto = await $.command.run({ command: 'coach', args: 'auto' })
+  expect(auto.text).toContain('automático')
+})

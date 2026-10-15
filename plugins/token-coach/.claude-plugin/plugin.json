@@ -1,6 +1,6 @@
 {
   "name": "token-coach",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Recomienda modelo y esfuerzo para cada prompt (sin gastar tokens), mide la caché y el ahorro, y lo muestra en un panel lateral con el logo de Claude animado.",
   "types": "./types/index.d.ts",
   "author": {

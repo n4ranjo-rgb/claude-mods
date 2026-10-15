@@ -50,6 +50,50 @@ function bar(ratio: number, width: number): string {
   return '█'.repeat(filled) + '░'.repeat(width - filled)
 }
 
+function switchCommands(pick: CoachPick): string {
+  return `\`/model ${MODEL_ID[pick.tier]}\` y \`/effort ${pick.effort}\``
+}
+
+function adviceReport(advice: Advice, base: CoachPick | undefined): string {
+  const lines = [
+    `**◆ Token Coach** · ${advice.category}`,
+    '',
+    `**Recomendado:** ${describe(advice)}`,
+    ...advice.reasons.map(r => `- ${r}`),
+  ]
+  if (base !== undefined) lines.push('', `Coste estimado frente a tu sesión (${describe(base)}): **${relativeCost(advice, base, DEFAULT_CTX).toFixed(2)}×**`)
+  lines.push('', `Para usarlo: ${switchCommands(advice)}`, '', '_Análisis local: no gastó tokens del modelo._')
+  return lines.join('\n')
+}
+
+function sessionReport(advice: CoachAdvice | null, stats: CoachStats, mode: CoachMode, pinned: CoachPick | null): string {
+  const lines = ['**◆ Token Coach**', '']
+  if (advice === null) {
+    lines.push('Aún no hay recomendación: escribe un prompt, o usa `/coach <tu tarea>` para analizar una tarea sin gastar tokens.')
+  } else {
+    lines.push(
+      `**Último prompt** (${advice.category}): recomendado **${describe(advice)}**`,
+      ...advice.reasons.map(r => `- ${r}`),
+      `- Tu sesión: ${describe(advice.base)} · aplicado: ${describe(advice.applied)} (${advice.note})`,
+    )
+    if (!samePick(advice, advice.applied)) lines.push(`- Para cambiar a mano: ${switchCommands(advice)}`)
+  }
+  const saved = stats.baselineUsd - stats.spentUsd
+  const pct = stats.baselineUsd > 0 ? Math.round((saved / stats.baselineUsd) * 100) : 0
+  lines.push(
+    '',
+    `**Sesión** · ${stats.turns} turnos · último: ${fmtTokens(stats.lastInput)} in / ${fmtTokens(stats.lastOutput)} out · caché ${stats.cacheHitPct}% · contexto ~${fmtTokens(stats.context)}`,
+    `Gasto ≈ $${stats.spentUsd.toFixed(3)} (equivalente API)${saved > 0.0005 ? ` · ahorro ${pct}%` : ''}`,
+  )
+  const tip = contextTip(stats.context)
+  if (tip !== undefined) lines.push(`⚠ ${tip}`)
+  lines.push(
+    '',
+    `Modo: **${mode === 'auto' ? 'automático' : 'solo sugerencias'}**${pinned !== null ? ` · fijado ${describe(pinned)}` : ''} — \`/coach auto\` · \`/coach sugerir\` · \`/coach reset\``,
+  )
+  return lines.join('\n')
+}
+
 export const register: Register = on => {
   const logo = animator()
   let logoSize: { columns: number; rows: number } | undefined
@@ -60,16 +104,18 @@ export const register: Register = on => {
   let warm: CoachPick | undefined
   let base: CoachPick | undefined
   let steps = 0
+  let adviceTurn: string | undefined
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'coach',
-      description: 'Token Coach: abre el panel, o cambia de modo (auto | sugerir | reset)',
-      argumentHint: '[auto|sugerir|reset]',
+      description: 'Token Coach: informe y panel; /coach <tarea> recomienda modelo; auto | sugerir | reset',
+      argumentHint: '[tarea | auto | sugerir | reset]',
     })
     const saved = await $.store.get('mode')
     if (saved === 'auto' || saved === 'suggest') await update($, modeAtom, () => saved)
-    void $.ui.open({ id: PANE, title: TITLE })
+    // Sin superficie que dibuje (Claude Code en la web, -p) no hay panel: /coach responde en texto.
+    if ((await $.session.surfaces()).length > 0) void $.ui.open({ id: PANE, title: TITLE })
 
     $.clock.every(FPS_MS, () => {
       if (logoSize === undefined) return
@@ -86,6 +132,13 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // Un cliente que dibuja (la app de escritorio, una terminal remota) se conecta: abre el panel.
+  on('session.attach', async ($, e, next) => {
+    const attached = await next(e)
+    void $.ui.open({ id: PANE, title: TITLE })
+    return attached
+  })
+
   on('command.run', { command: 'coach' }, async ($, e) => {
     const arg = e.args.trim().toLowerCase()
     if (arg === 'auto' || arg === 'sugerir' || arg === 'suggest') {
@@ -99,8 +152,14 @@ export const register: Register = on => {
       await update($, statsAtom, () => EMPTY_STATS)
       return { text: 'Token Coach: fijado quitado y estadísticas reiniciadas.' }
     }
+    if (arg !== '' && arg !== 'panel') {
+      const advice = classify(e.args)
+      return { text: adviceReport(advice, base) }
+    }
+    const report = sessionReport(await read($, adviceAtom), await read($, statsAtom), await read($, modeAtom), await read($, pinnedAtom))
+    if ((await $.session.surfaces()).length === 0) return { text: report }
     const opened = await $.ui.open({ id: PANE, title: TITLE })
-    return { text: opened.isPlaced ? 'Panel Token Coach abierto.' : `Token Coach: ${opened.reason ?? 'sin espacio para el panel'}` }
+    return { text: opened.isPlaced ? 'Panel Token Coach abierto.' : report }
   })
 
   on('turn.start', async ($, e, next) => {
@@ -164,6 +223,7 @@ export const register: Register = on => {
           note,
         }
         await update($, adviceAtom, () => view)
+        adviceTurn = e.turnId
         $.ui.status(`◆ Coach: ${describe(advice)}${samePick(pick, base) ? '' : ` → aplicado ${describe(pick)}`}`)
       }
       pending = undefined
@@ -186,6 +246,13 @@ export const register: Register = on => {
       await update($, modeAtom, () => 'suggest')
       await $.store.set('mode', 'suggest')
       $.ui.toast('Token Coach: el modelo elegido falló; vuelvo a modo sugerencia.')
+    }
+
+    const shown = await read($, adviceAtom)
+    if (shown !== null && adviceTurn === e.turnId && !samePick(shown, shown.applied) && (await $.session.surfaces()).length === 0) {
+      // Aviso de una línea que el modelo no lee (0 tokens); solo donde no hay panel.
+      const line = `◆ Token Coach: para esto bastaba ${describe(shown)} → ${switchCommands(shown)}`
+      void $.session.append({ message: { type: 'system', content: [{ type: 'text', text: line }] } }).catch(() => undefined)
     }
 
     const u = e.usage

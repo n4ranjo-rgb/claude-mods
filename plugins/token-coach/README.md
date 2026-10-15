@@ -27,11 +27,30 @@ claude plugin install token-coach --marketplace n4ranjo-rgb/claude-mods
 
 **Ver el panel a la derecha:** el panel se acopla al lado del chat cuando la terminal está en modo pantalla completa y tiene al menos 110 columnas (144 para que se abra solo al empezar). Con menos espacio aparece encima del prompt, en versión compacta. En la app de escritorio el logo se anima con SVG.
 
+## Claude Code en la web (claude.ai/code)
+
+Funciona en cualquier navegador, aunque tu equipo sea antiguo. En **Editar entorno de nube → Setup script** pega:
+
+```
+claude plugin marketplace add n4ranjo-rgb/claude-mods
+claude plugin install token-coach@n4ranjo-mods --scope user
+```
+
+Guarda los cambios. Cada sesión nueva de ese entorno lo instala sola, siempre en su última versión.
+
+En la web todavía no se pueden dibujar paneles, así que no hay panel lateral ni logo animado. A cambio:
+
+- `/coach` muestra un informe en texto: recomendación del último prompt, lo que se aplicó, tokens, caché y ahorro.
+- `/coach <tu tarea>` analiza una tarea y te dice qué modelo y esfuerzo usar, sin gastar tokens del modelo.
+- Cuando un prompt necesitaba menos, aparece un aviso de una línea con los comandos `/model …` y `/effort …` para cambiar. Ese aviso no lo lee el modelo, así que no cuesta tokens.
+- El modo automático (`/coach auto`) funciona igual que en la terminal.
+
 ## Uso
 
 | Acción | Cómo |
 | --- | --- |
-| Abrir el panel | `/coach` |
+| Abrir el panel (o el informe en texto en la web) | `/coach` |
+| Analizar una tarea sin gastar tokens | `/coach <tu tarea>` |
 | Modo automático (aplica la recomendación cuando compensa) | `/coach auto` o tecla `m` en el panel |
 | Solo sugerencias (por defecto) | `/coach sugerir` |
 | Fijar la recomendación actual (permite subir) | tecla `f` → «Fijar» |
