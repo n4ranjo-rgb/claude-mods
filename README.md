@@ -47,6 +47,15 @@ claude plugin update token-coach
 
 Después ejecuta `/reload-plugins` en la sesión abierta, o abre una sesión nueva.
 
+## REA en Claude Code web
+
+Este repositorio trae [REA (Reverse Engineer Anything)](https://github.com/morluto/rea) ya configurado para las sesiones de Claude Code web que abras sobre él: sirve para analizar páginas web y apps y recrearlas.
+
+- `.mcp.json` registra el servidor MCP `rea` (se descarga con `npx` al arrancar la sesión; el entorno necesita acceso a npm).
+- `.claude/skills/reverse-engineer-anything/` es la skill oficial de REA (licencia MIT), que le explica a Claude cómo usarlo.
+
+Al abrir la sesión, Claude Code te pedirá aprobar el servidor `rea` del `.mcp.json`. Para actualizar REA, cambia la versión en `.mcp.json` y vuelve a copiar la skill desde el repositorio de REA.
+
 ## Añadir un plugin nuevo
 
 1. Crea una carpeta en `plugins/<nombre>/` con `.claude-plugin/plugin.json`, `hooks/hooks.json` y su módulo.
